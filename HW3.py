@@ -42,7 +42,8 @@ if __name__ == "__main__":
     robot = env.GetRobots()[0]
 
     ### INITIALIZE YOUR PLUGIN HERE ###
-    planner = RaveCreateModule(env,'RRTconnect')
+    # planner = RaveCreateModule(env,'RRTconnect')
+    planner = RaveCreateModule(env,'BiRRT')
     env.AddModule(planner,args='')
     ### END INITIALIZING YOUR PLUGIN ###
    
@@ -67,7 +68,7 @@ if __name__ == "__main__":
         ### YOUR CODE HERE ###
         print(command_str)
         start_time = time.time()
-        planner.SendCommand('MyCommand '+ command_str)
+        planner.SendCommand('PlanningInterface '+ command_str)
         print("time:"+str(time.time()-start_time))
         ### END OF YOUR CODE ###
     waitrobot(robot)

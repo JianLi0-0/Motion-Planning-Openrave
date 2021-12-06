@@ -7,11 +7,12 @@ RRTconnect::RRTconnect(EnvironmentBasePtr penv, std::istream& ss)
     RegisterCommand("PlanningInterface",boost::bind(&RRTconnect::PlanningInterface,this,_1,_2),
                     "This is an example command");
     std::srand((unsigned)time(NULL));
-    openrave_ptr._env = GetEnv();
-    openrave_ptr._robot_ptr = GetEnv()->GetRobot("PR2");
-    openrave_ptr._leftarm_ptr = openrave_ptr._robot_ptr->SetActiveManipulator("leftarm");
-    openrave_ptr._robot_ptr->GetActiveDOFLimits(_params.lower_limit, _params.upper_limit);
-    _params.joint_index = openrave_ptr._leftarm_ptr->GetArmIndices();
+    openrave_ptr = new OpenravePtr();
+    openrave_ptr->_env = GetEnv();
+    openrave_ptr->_robot_ptr = GetEnv()->GetRobot("PR2");
+    openrave_ptr->_leftarm_ptr = openrave_ptr->_robot_ptr->SetActiveManipulator("leftarm");
+    openrave_ptr->_robot_ptr->GetActiveDOFLimits(_params.lower_limit, _params.upper_limit);
+    _params.joint_index = openrave_ptr->_leftarm_ptr->GetArmIndices();
     for(size_t i=0;i<_params.joint_index.size();i++){
         _params.lower_limit[i] = _params.lower_limit[_params.joint_index[i]];
         _params.upper_limit[i] = _params.upper_limit[_params.joint_index[i]];
@@ -23,19 +24,6 @@ RRTconnect::RRTconnect(EnvironmentBasePtr penv, std::istream& ss)
 
     Planner::_params = _params;
 
-}
-
-void string_to_vector_double(string str, std::vector<double>& fea){
-    stringstream ss(str);
-    string buf;
-    vector<double> vec;
-
-    while(ss >> buf)
-    {
-        vec.push_back(atof(buf.c_str()));
-        fea = vec;
-    }
-    
 }
 
 bool RRTconnect::PlanningInterface(std::ostream& sout, std::istream& sinput)
@@ -50,10 +38,8 @@ bool RRTconnect::PlanningInterface(std::ostream& sout, std::istream& sinput)
 
     _start.assign(command.begin(), command.begin()+7);
     _goal.assign(command.begin()+7, command.end());
-    Planning(_start, _goal);
-    // std::cout << "_success_count:"<< std::endl;
-    // MyPrint(_success_count);
 
+    Planning(_start, _goal);
 
     return true;
 }
@@ -73,13 +59,17 @@ void RRTconnect::Planning(State start, State goal)
     bool termination = false;
     NodeTree* rrt_tree = new NodeTree(new Node(_start, nullptr));
     std::vector<State>* node_list = new std::vector<State>();
+    KDTree* kd_tree;
+    size_t count = 0;
     do{
         auto rand_q = SampleRandomConfig(_goal);
-        // VisualizeRandSample(rand_q, 6, 1);
-        auto nearest_node = NearestNode(rrt_tree, node_list, rand_q);
-        termination = LocalPlanner(rrt_tree, node_list, nearest_node, rand_q);
+        auto nearest_node = NearestNode(rrt_tree, node_list, kd_tree, rand_q);
+        termination = LocalPlanner(rrt_tree, node_list, kd_tree, nearest_node, rand_q);
         if (int(rrt_tree->GetTreeSize()) > _params.max_sample_points) {std::cout << "Maximum points are sampled !!!" << std::endl;break;}
-        std::cout << "tree_size: " <<  rrt_tree->GetTreeSize() << std::endl;
+        if(rrt_tree->GetTreeSize()>count) {
+            count += 400;
+            std::cout << "tree_size: " <<  rrt_tree->GetTreeSize() << std::endl;
+        }
     }while (!termination);
 
     Node* end_point;
@@ -87,10 +77,8 @@ void RRTconnect::Planning(State start, State goal)
         rrt_tree->Append(new Node(_goal, rrt_tree->GetLatestNode()));
         end_point = rrt_tree->GetLatestNode();
     }
-    else end_point = NearestNode(rrt_tree, node_list, _goal);
+    else end_point = NearestNode(rrt_tree, node_list, kd_tree, _goal);
     std::cout << *end_point << std::endl;
-    _success_count.push_back(rrt_tree->GetTreeSize());
-    
     
     auto temp_end_point = end_point;
     do{
@@ -117,7 +105,7 @@ void RRTconnect::Planning(State start, State goal)
 
 }
 
-bool RRTconnect::LocalPlanner(NodeTree* rrt_tree, std::vector<State>* node_list, Node* nearest_node, State rand_q)
+bool RRTconnect::LocalPlanner(NodeTree* rrt_tree, std::vector<State>* node_list, KDTree* &kd_tree, Node* nearest_node, State rand_q)
 {
     auto current_q = nearest_node->q;
     auto delta_q = rand_q + current_q*(-1);
@@ -125,7 +113,7 @@ bool RRTconnect::LocalPlanner(NodeTree* rrt_tree, std::vector<State>* node_list,
 
     auto new_q = current_q + unit_step*_params.step_size;
 
-    while (!CheckCollision(new_q) && IsInWorkspace(new_q) && L2Norm(NearestNode(rrt_tree, node_list, new_q)->q, new_q)>0.9*_params.step_size) // 
+    while (IsInWorkspace(new_q) && !CheckCollision(new_q) && L2Norm(NearestNode(rrt_tree, node_list, kd_tree, new_q)->q, new_q)>0.9*_params.step_size) // 
     {
         Node* new_node = new Node(new_q, nearest_node);
         rrt_tree->Append(new_node);
@@ -143,8 +131,8 @@ bool RRTconnect::LocalPlanner(NodeTree* rrt_tree, std::vector<State>* node_list,
 
 bool RRTconnect::CheckCollision(State q)
 {
-    openrave_ptr._robot_ptr->SetDOFValues(q, 1, openrave_ptr._leftarm_ptr->GetArmIndices());
-    return (GetEnv()->CheckStandaloneSelfCollision(openrave_ptr._robot_ptr) || GetEnv()->CheckCollision(openrave_ptr._robot_ptr));
+    openrave_ptr->_robot_ptr->SetDOFValues(q, 1, openrave_ptr->_leftarm_ptr->GetArmIndices());
+    return (GetEnv()->CheckStandaloneSelfCollision(openrave_ptr->_robot_ptr) || GetEnv()->CheckCollision(openrave_ptr->_robot_ptr));
 }
 
 // called to create a new plugin

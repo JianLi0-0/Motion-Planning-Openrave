@@ -37,7 +37,7 @@ public:
     Planner() {}
     ~Planner(){}
     virtual State SampleRandomConfig(State goal);
-    Node* NearestNode(NodeTree* query_tree, std::vector<State>* node_list, State query_point);
+    Node* NearestNode(NodeTree* query_tree, std::vector<State>* node_list, KDTree* &kd_tree, State query_point);
     bool IsInWorkspace(State q);
     bool CheckDestination(State q, State goal);
     void ShortcutSmoothing(std::vector<Node*>& path);
@@ -59,12 +59,11 @@ State Planner::SampleRandomConfig(State goal)
         if(RandomNumber()<_params.goal_bias_probability_second) q = goal;
         else{
             do{
-
                 q.clear();
                 for(std::size_t i=0;i<goal.size();i++){
                     q.push_back((RandomNumber()-0.5)*2.0*_params.goal_bias_mag + goal[i]);
                 }
-            }while (CheckCollision(q));
+            }while (!IsInWorkspace(q) || CheckCollision(q));
         }
     }
     else{
@@ -73,16 +72,13 @@ State Planner::SampleRandomConfig(State goal)
             for(std::size_t i=0;i<goal.size();i++){
                 q.push_back(RandomNumber()*(_params.upper_limit[i]-_params.lower_limit[i])+_params.lower_limit[i]);
             }
-        }while (CheckCollision(q));
+        }while (!IsInWorkspace(q) || CheckCollision(q));
     }
     return q;
 }
 
-Node* Planner::NearestNode(NodeTree* query_tree, std::vector<State>* node_list, State query_point)
+Node* Planner::NearestNode(NodeTree* query_tree, std::vector<State>* node_list, KDTree* &kd_tree, State query_point)
 {
-    // static std::vector<State>* node_list = new std::vector<State>();
-    static KDTree* kd_tree;
-
     auto tree_size = query_tree->GetTreeSize();
     if( tree_size<200 || tree_size%200==0 )
     {
@@ -138,9 +134,10 @@ bool Planner::CheckLineCollision(State q1, State q2)
     auto delta_q = q2 + q1*(-1);
     auto unit_step = delta_q*(1/L2Norm(delta_q));
     auto new_q = q1;
-    while(L2Norm(q2, new_q) > _params.step_size*0.1)
+    while(L2Norm(q2, new_q) > _params.step_size*0.5)
     {
-        new_q = new_q + unit_step*(_params.step_size*0.1);
+        new_q = new_q + unit_step*(_params.step_size*0.3);
+        if (!IsInWorkspace(new_q)) continue;
         if (CheckCollision(new_q)) return true;
     }
 
