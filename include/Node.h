@@ -1,4 +1,9 @@
-#include <vector> 
+#ifndef NODE_
+#define NODE_
+
+#include <vector>
+#include <iostream>
+
 typedef std::vector<double> State;
 
 class Node
@@ -75,3 +80,4 @@ State operator*(State const& v1, State const& v2)
     return r;
 }
 
+#endif

@@ -1,3 +1,6 @@
+#ifndef NODETREE_
+#define NODETREE_
+
 #include <vector>
 #include <algorithm>
 #include "Node.h"
@@ -15,17 +18,16 @@ class NodeTree
         Node* GetLatestNode() { return _nodes[GetTreeSize()-1]; }
         Node* GetNodeByIdx(size_t idx){ return _nodes[idx]; }
         size_t GetTreeSize() { return _nodes.size();}
-        std::vector<Node*> GetPath(Node* end_point);
+        std::vector<Node*> GetPath(Node* end_point)
+        {
+            std::vector<Node*> path;
+            do{
+                path.push_back(end_point);
+                end_point = end_point->parent;
+            }while(end_point!=nullptr);
+            std::reverse(path.begin(), path.end());
+            return path;
+        }
 };
 
-
-std::vector<Node*> NodeTree::GetPath(Node* end_point)
-{
-    std::vector<Node*> path;
-    do{
-        path.push_back(end_point);
-        end_point = end_point->parent;
-    }while(end_point!=nullptr);
-    std::reverse(path.begin(), path.end());
-    return path;
-}
+#endif
