@@ -132,7 +132,8 @@ bool RRTconnect::LocalPlanner(NodeTree* rrt_tree, std::vector<State>* node_list,
 bool RRTconnect::CheckCollision(State q)
 {
     openrave_ptr->_robot_ptr->SetDOFValues(q, 1, openrave_ptr->_leftarm_ptr->GetArmIndices());
-    return (GetEnv()->CheckStandaloneSelfCollision(openrave_ptr->_robot_ptr) || GetEnv()->CheckCollision(openrave_ptr->_robot_ptr));
+    // return (GetEnv()->CheckStandaloneSelfCollision(openrave_ptr->_robot_ptr) || GetEnv()->CheckCollision(openrave_ptr->_robot_ptr));
+    return GetEnv()->CheckCollision(openrave_ptr->_robot_ptr);
 }
 
 // called to create a new plugin

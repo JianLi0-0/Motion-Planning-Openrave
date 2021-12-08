@@ -68,19 +68,19 @@ void BiRRT::Planning(State start, State goal)
     do{
         auto rand_q = SampleRandomConfig();
         auto tree_1_nearest_node = NearestNode(rrt_tree_1, node_list_1, kd_tree_1, rand_q);
-        LocalPlanner(rrt_tree_1, node_list_1, kd_tree_1, tree_1_nearest_node, rand_q);
+        Connect(rrt_tree_1, node_list_1, kd_tree_1, tree_1_nearest_node, rand_q);
 
         State tree_goal = rrt_tree_1->GetLatestNode()->q;
         auto tree_2_nearest_node = NearestNode(rrt_tree_2, node_list_2, kd_tree_2, tree_goal);
-        LocalPlanner(rrt_tree_2, node_list_2, kd_tree_2, tree_2_nearest_node, rand_q);
+        Extend(rrt_tree_2, node_list_2, kd_tree_2, tree_2_nearest_node, rand_q);
 
         if (L2Norm(tree_goal, rrt_tree_2->GetLatestNode()->q) < _params.step_size) {
             termination = true;
             std::cout << "termination = true" << std::endl;
         }
-        // std::cout << "termination = 1" << std::endl;
 
         if (rrt_tree_1->GetTreeSize() > rrt_tree_2->GetTreeSize()) {
+            // std::cout << "SWAP" << std::endl;
             std::swap(rrt_tree_1, rrt_tree_2);
             std::swap(node_list_1, node_list_2);
             std::swap(kd_tree_1, kd_tree_2);
@@ -88,25 +88,26 @@ void BiRRT::Planning(State start, State goal)
 
         auto tree_size = int(rrt_tree_1->GetTreeSize())+int(rrt_tree_2->GetTreeSize());
         if (tree_size > _params.max_sample_points) {std::cout << "Maximum points are sampled !!!" << std::endl;break;}
-        if(rrt_tree_1->GetTreeSize()>count1) {count1 += 1; std::cout << "tree_1_size: " <<  rrt_tree_1->GetTreeSize() << std::endl; }
-        if(rrt_tree_2->GetTreeSize()>count2) {count2 += 1; std::cout << "tree_2_size: " <<  rrt_tree_2->GetTreeSize() << std::endl; }
+        if(rrt_tree_1->GetTreeSize()>count1) {count1 += 500; std::cout << "tree_1_size: " <<  rrt_tree_1->GetTreeSize() << "  tree_2_size: " <<  rrt_tree_2->GetTreeSize() << std::endl; }
+        if(rrt_tree_2->GetTreeSize()>count2) {count2 += 500; std::cout << "tree_1_size: " <<  rrt_tree_1->GetTreeSize() << "  tree_2_size: " <<  rrt_tree_2->GetTreeSize() << std::endl; }
     }while (!termination);
 
     Node* end_point_1 = rrt_tree_1->GetLatestNode();
     Node* end_point_2 = rrt_tree_2->GetLatestNode();
 
-    // auto temp_end_point = end_point_1;
-    // do{
-    //     VisualizeTree(openrave_ptr, temp_end_point, _params.draw_path_point, _params.draw_path_line, _green, _red);
-    //     temp_end_point = temp_end_point->parent;
-    // }while(temp_end_point->parent!=nullptr);
-    // temp_end_point = end_point_2;
-    // do{
-    //     VisualizeTree(openrave_ptr, temp_end_point, _params.draw_path_point, _params.draw_path_line, _green, _red);
-    //     temp_end_point = temp_end_point->parent;
-    // }while(temp_end_point->parent!=nullptr);
+    // visualize the original path
+    auto temp_end_point = end_point_1;
+    do{
+        VisualizeTree(openrave_ptr, temp_end_point, _params.draw_path_point, _params.draw_path_line, _green, _red);
+        temp_end_point = temp_end_point->parent;
+    }while(temp_end_point->parent!=nullptr);
+    temp_end_point = end_point_2;
+    do{
+        VisualizeTree(openrave_ptr, temp_end_point, _params.draw_path_point, _params.draw_path_line, _green, _red);
+        temp_end_point = temp_end_point->parent;
+    }while(temp_end_point->parent!=nullptr);
 
-    // temp_end_point = end_point;
+    // concatenate two path
     std::cout << "path1 " << std::endl;
     auto path1 = rrt_tree_1->GetPath(end_point_1);
     auto path2 = rrt_tree_2->GetPath(end_point_2);
@@ -126,6 +127,7 @@ void BiRRT::Planning(State start, State goal)
 
     ShortcutSmoothing(path);
     std::cout << "path: " <<  path.size() << std::endl;
+    // visualize the short-cutting path
     for(size_t i=0;i<path.size()-1;i++){
         Node* child = new Node(path[i]->q,path[i+1]);
         VisualizeTree(openrave_ptr, child, _params.draw_path_point, _params.draw_path_line, _blue, _green);
@@ -178,20 +180,35 @@ State BiRRT::SampleRandomConfig()
     return q;
 }
 
-template<typename T>
-void SwapTrees(T* &tree_1, T* &tree_2)
-{
-    std::cout << "SwapTrees = 1" << std::endl;
-    T* temp_tree = tree_1;
-    tree_1 = tree_2;
-    tree_2 = temp_tree;
-    std::cout << "SwapTrees = 2" << std::endl;
-}
-
 bool BiRRT::CheckCollision(State q)
 {
     openrave_ptr->_robot_ptr->SetDOFValues(q, 1, openrave_ptr->_leftarm_ptr->GetArmIndices());
-    return (GetEnv()->CheckStandaloneSelfCollision(openrave_ptr->_robot_ptr) || GetEnv()->CheckCollision(openrave_ptr->_robot_ptr));
+    // return (GetEnv()->CheckStandaloneSelfCollision(openrave_ptr->_robot_ptr) || GetEnv()->CheckCollision(openrave_ptr->_robot_ptr));
+    return GetEnv()->CheckCollision(openrave_ptr->_robot_ptr);
+}
+
+void BiRRT::TestTime()
+{
+    CustomTimer timer;
+    for(int j=0;j<1;j++){
+        timer.tic();
+        for(int i=0;i<32000;i++)
+        {
+            openrave_ptr->_robot_ptr->SetDOFValues(_start, 1, openrave_ptr->_leftarm_ptr->GetArmIndices());
+            GetEnv()->CheckCollision(openrave_ptr->_robot_ptr);
+        }
+        timer.toc(true);
+        timer.tic();
+        for(int i=0;i<32000;i++)
+        {
+            openrave_ptr->_robot_ptr->SetDOFValues(_start, 1, openrave_ptr->_leftarm_ptr->GetArmIndices());
+            GetEnv()->CheckStandaloneSelfCollision(openrave_ptr->_robot_ptr);
+        }
+        timer.toc(true);
+    }
+    
+    timer.tic();
+    timer.toc(true);
 }
 
 // called to create a new plugin

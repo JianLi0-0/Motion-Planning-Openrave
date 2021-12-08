@@ -116,4 +116,24 @@ void string_to_vector_double(std::string str, std::vector<double>& fea){
     }
 }
 
+class CustomTimer
+{
+	public:
+    	CustomTimer(){};
+    	~CustomTimer(){};
+		void tic()
+		{
+			start = std::chrono::system_clock::now();
+		}
+		double toc(bool print)
+		{
+			elapsed_seconds = std::chrono::system_clock::now() - start;
+			if(print) {std::cout << "elapsed time: " << elapsed_seconds.count() << std::endl;}
+			return elapsed_seconds.count();
+		}
+	private:
+		    std::chrono::time_point<std::chrono::system_clock> start;
+    		std::chrono::duration<double> elapsed_seconds;
+};
+
 #endif

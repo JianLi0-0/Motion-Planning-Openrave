@@ -17,8 +17,7 @@ public:
     bool CheckCollision(State q);
     State SampleRandomConfig();
 
-    template<typename T>
-    void SwapTrees(T* &tree_1, T* &tree_2);
+    void TestTime();
 
 private:
     Params _params ={
@@ -26,8 +25,8 @@ private:
         .goal_bias_probability_second = 0.30,
         .goal_bias_mag = 60.0/180.0*M_PI,
         .step_size = 15.0/180.0*M_PI,
-        .max_sample_points = 20000,
-        .draw_tree_point = 2,
+        .max_sample_points = 40000,
+        .draw_tree_point = 0,
         .draw_tree_line = 0,
         .draw_path_point = 5,
         .draw_path_line = 3,

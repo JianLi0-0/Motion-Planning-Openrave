@@ -41,10 +41,14 @@ public:
     bool IsInWorkspace(State q);
     bool CheckDestination(State q, State goal);
     void ShortcutSmoothing(std::vector<Node*>& path);
+    void RandomShortcutSmoothing(std::vector<Node*>& path);
     bool CheckLineCollision(State q1, State q2);
     double RandomNumber();
     double L2Norm(const State &a, const State &b);
     double L2Norm(const State &a);
+    bool Connect(NodeTree* rrt_tree, std::vector<State>* node_list, KDTree* &kd_tree, Node* nearest_node, State rand_q);
+    bool Extend(NodeTree* rrt_tree, std::vector<State>* node_list, KDTree* &kd_tree, Node* nearest_node, State rand_q);
+
 
     virtual bool CheckCollision(State q) = 0;
     
@@ -114,6 +118,22 @@ bool Planner::CheckDestination(State q, State goal)
 
 void Planner::ShortcutSmoothing(std::vector<Node*>& path)
 {
+    auto point1 = path.begin();
+    do{
+        while(point1+2!=path.end())
+        {
+            auto point2 = point1 + 2;
+            if (!CheckLineCollision((*point1)->q, (*point2)->q))
+                path.erase(point1+1, point2);
+            else
+                break;
+        }
+        point1++;
+    }while(point1!=path.end()-1);
+}
+
+void Planner::RandomShortcutSmoothing(std::vector<Node*>& path)
+{
     for(int i=0;i<_params.smooth_max_iter;i++){
         int path_size = path.size();
         int rand1 = int(RandomNumber()*path_size);
@@ -168,4 +188,44 @@ double Planner::L2Norm(const State &a)
     }
     return std::sqrt(distc);
 }
+
+bool Planner::Connect(NodeTree* rrt_tree, std::vector<State>* node_list, KDTree* &kd_tree, Node* nearest_node, State rand_q)
+{
+    auto current_q = nearest_node->q;
+    auto delta_q = rand_q + current_q*(-1);
+    auto unit_step = delta_q*(1/L2Norm(delta_q));
+
+    auto new_q = current_q + unit_step*_params.step_size;
+
+    while (IsInWorkspace(new_q) && !CheckCollision(new_q) && L2Norm(NearestNode(rrt_tree, node_list, kd_tree, new_q)->q, new_q)>0.9*_params.step_size) // 
+    {
+        Node* new_node = new Node(new_q, nearest_node);
+        rrt_tree->Append(new_node);
+        // if (CheckDestination(new_q, _goal)) return true;
+        new_q = new_q + unit_step*_params.step_size;
+        nearest_node = new_node;
+    }
+
+    return false;
+}
+
+bool Planner::Extend(NodeTree* rrt_tree, std::vector<State>* node_list, KDTree* &kd_tree, Node* nearest_node, State rand_q)
+{
+    auto current_q = nearest_node->q;
+    auto delta_q = rand_q + current_q*(-1);
+    auto unit_step = delta_q*(1/L2Norm(delta_q));
+
+    auto new_q = current_q + unit_step*_params.step_size;
+
+    if (IsInWorkspace(new_q) && !CheckCollision(new_q) && L2Norm(NearestNode(rrt_tree, node_list, kd_tree, new_q)->q, new_q)>0.9*_params.step_size) // 
+    {
+        Node* new_node = new Node(new_q, nearest_node);
+        rrt_tree->Append(new_node);
+    }
+
+    return false;
+}
+
+
+
 #endif
