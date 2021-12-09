@@ -37,7 +37,7 @@ public:
     Planner() {}
     ~Planner(){}
     virtual State SampleRandomConfig(State goal);
-    Node* NearestNode(NodeTree* query_tree, std::vector<State>* node_list, KDTree* &kd_tree, State query_point);
+    Node* NearestNode(NodeTree* query_tree, KDTree* &kd_tree, State query_point);
     bool IsInWorkspace(State q);
     bool CheckDestination(State q, State goal);
     void ShortcutSmoothing(std::vector<Node*>& path);
@@ -46,8 +46,8 @@ public:
     double RandomNumber();
     double L2Norm(const State &a, const State &b);
     double L2Norm(const State &a);
-    bool Connect(NodeTree* rrt_tree, std::vector<State>* node_list, KDTree* &kd_tree, Node* nearest_node, State rand_q);
-    bool Extend(NodeTree* rrt_tree, std::vector<State>* node_list, KDTree* &kd_tree, Node* nearest_node, State rand_q);
+    bool Connect(NodeTree* rrt_tree, KDTree* &kd_tree, Node* nearest_node, State rand_q);
+    bool Extend(NodeTree* rrt_tree, KDTree* &kd_tree, Node* nearest_node, State rand_q);
 
 
     virtual bool CheckCollision(State q) = 0;
@@ -81,20 +81,11 @@ State Planner::SampleRandomConfig(State goal)
     return q;
 }
 
-Node* Planner::NearestNode(NodeTree* query_tree, std::vector<State>* node_list, KDTree* &kd_tree, State query_point)
+Node* Planner::NearestNode(NodeTree* query_tree, KDTree* &kd_tree, State query_point)
 {
     auto tree_size = query_tree->GetTreeSize();
-    if( tree_size<200 || tree_size%200==0 )
-    {
-        if(tree_size<node_list->size()) node_list->clear();
-
-        while (tree_size > node_list->size())
-        {
-            auto n = query_tree->GetNodeByIdx(node_list->size());
-            node_list->push_back(n->q*_params.weights);
-        }
-        kd_tree =  new KDTree(*node_list);
-    }
+    if( tree_size<50 || tree_size%50==0 )
+        kd_tree =  new KDTree(query_tree);
     
     auto index = kd_tree->nearest_index(query_point*_params.weights);
     return query_tree->GetNodeByIdx(index);
@@ -189,7 +180,7 @@ double Planner::L2Norm(const State &a)
     return std::sqrt(distc);
 }
 
-bool Planner::Connect(NodeTree* rrt_tree, std::vector<State>* node_list, KDTree* &kd_tree, Node* nearest_node, State rand_q)
+bool Planner::Connect(NodeTree* rrt_tree, KDTree* &kd_tree, Node* nearest_node, State rand_q)
 {
     auto current_q = nearest_node->q;
     auto delta_q = rand_q + current_q*(-1);
@@ -197,7 +188,7 @@ bool Planner::Connect(NodeTree* rrt_tree, std::vector<State>* node_list, KDTree*
 
     auto new_q = current_q + unit_step*_params.step_size;
 
-    while (IsInWorkspace(new_q) && !CheckCollision(new_q) && L2Norm(NearestNode(rrt_tree, node_list, kd_tree, new_q)->q, new_q)>0.9*_params.step_size) // 
+    while (IsInWorkspace(new_q) && !CheckCollision(new_q) && L2Norm(NearestNode(rrt_tree, kd_tree, new_q)->q, new_q)>0.9*_params.step_size) // 
     {
         Node* new_node = new Node(new_q, nearest_node);
         rrt_tree->Append(new_node);
@@ -209,7 +200,7 @@ bool Planner::Connect(NodeTree* rrt_tree, std::vector<State>* node_list, KDTree*
     return false;
 }
 
-bool Planner::Extend(NodeTree* rrt_tree, std::vector<State>* node_list, KDTree* &kd_tree, Node* nearest_node, State rand_q)
+bool Planner::Extend(NodeTree* rrt_tree, KDTree* &kd_tree, Node* nearest_node, State rand_q)
 {
     auto current_q = nearest_node->q;
     auto delta_q = rand_q + current_q*(-1);
@@ -217,7 +208,7 @@ bool Planner::Extend(NodeTree* rrt_tree, std::vector<State>* node_list, KDTree* 
 
     auto new_q = current_q + unit_step*_params.step_size;
 
-    if (IsInWorkspace(new_q) && !CheckCollision(new_q) && L2Norm(NearestNode(rrt_tree, node_list, kd_tree, new_q)->q, new_q)>0.9*_params.step_size) // 
+    if (IsInWorkspace(new_q) && !CheckCollision(new_q) && L2Norm(NearestNode(rrt_tree, kd_tree, new_q)->q, new_q)>0.9*_params.step_size) // 
     {
         Node* new_node = new Node(new_q, nearest_node);
         rrt_tree->Append(new_node);

@@ -57,14 +57,13 @@ void RRTconnect::Planning(State start, State goal)
     }
 
     bool termination = false;
-    NodeTree* rrt_tree = new NodeTree(new Node(_start, nullptr));
-    std::vector<State>* node_list = new std::vector<State>();
+    NodeTree* rrt_tree = new NodeTree(new Node(_start, nullptr), _params.weights);
     KDTree* kd_tree;
     size_t count = 0;
     do{
         auto rand_q = SampleRandomConfig(_goal);
-        auto nearest_node = NearestNode(rrt_tree, node_list, kd_tree, rand_q);
-        termination = LocalPlanner(rrt_tree, node_list, kd_tree, nearest_node, rand_q);
+        auto nearest_node = NearestNode(rrt_tree, kd_tree, rand_q);
+        termination = LocalPlanner(rrt_tree, kd_tree, nearest_node, rand_q);
         if (int(rrt_tree->GetTreeSize()) > _params.max_sample_points) {std::cout << "Maximum points are sampled !!!" << std::endl;break;}
         if(rrt_tree->GetTreeSize()>count) {
             count += 400;
@@ -77,7 +76,7 @@ void RRTconnect::Planning(State start, State goal)
         rrt_tree->Append(new Node(_goal, rrt_tree->GetLatestNode()));
         end_point = rrt_tree->GetLatestNode();
     }
-    else end_point = NearestNode(rrt_tree, node_list, kd_tree, _goal);
+    else end_point = NearestNode(rrt_tree, kd_tree, _goal);
     std::cout << *end_point << std::endl;
     
     auto temp_end_point = end_point;
@@ -99,13 +98,12 @@ void RRTconnect::Planning(State start, State goal)
 
     delete rrt_tree;
     rrt_tree = nullptr;
-    delete node_list;
-    node_list = nullptr;
-
+    delete kd_tree;
+    kd_tree = nullptr;
 
 }
 
-bool RRTconnect::LocalPlanner(NodeTree* rrt_tree, std::vector<State>* node_list, KDTree* &kd_tree, Node* nearest_node, State rand_q)
+bool RRTconnect::LocalPlanner(NodeTree* rrt_tree, KDTree* &kd_tree, Node* nearest_node, State rand_q)
 {
     auto current_q = nearest_node->q;
     auto delta_q = rand_q + current_q*(-1);
@@ -113,7 +111,7 @@ bool RRTconnect::LocalPlanner(NodeTree* rrt_tree, std::vector<State>* node_list,
 
     auto new_q = current_q + unit_step*_params.step_size;
 
-    while (IsInWorkspace(new_q) && !CheckCollision(new_q) && L2Norm(NearestNode(rrt_tree, node_list, kd_tree, new_q)->q, new_q)>0.9*_params.step_size) // 
+    while (IsInWorkspace(new_q) && !CheckCollision(new_q) && L2Norm(NearestNode(rrt_tree, kd_tree, new_q)->q, new_q)>0.9*_params.step_size) // 
     {
         Node* new_node = new Node(new_q, nearest_node);
         rrt_tree->Append(new_node);

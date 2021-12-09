@@ -13,7 +13,7 @@ public:
     bool PlanningInterface(std::ostream& sout, std::istream& sinput);
     
     void Planning(State start, State goal);
-    bool LocalPlanner(NodeTree* rrt_tree, std::vector<State>* node_list, KDTree* &kd_tree, Node* nearest_node, State rand_q);
+    bool LocalPlanner(NodeTree* rrt_tree, KDTree* &kd_tree, Node* nearest_node, State rand_q);
     bool CheckCollision(State q);
 
 private:

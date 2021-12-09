@@ -16,6 +16,8 @@
 #include <memory>
 #include <vector>
 
+#include "NodeTree.h"
+
 using point_t = std::vector< double >;
 using indexArr = std::vector< size_t >;
 using pointIndex = typename std::pair< std::vector< double >, size_t >;
@@ -88,7 +90,8 @@ class KDTree {
 
    public:
     KDTree() = default;
-    explicit KDTree(pointVec point_array);
+    // explicit KDTree(pointVec point_array);
+    explicit KDTree(NodeTree* point_array);
 
    private:
     KDNodePtr nearest_(           //

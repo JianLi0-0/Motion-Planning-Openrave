@@ -57,22 +57,20 @@ void BiRRT::Planning(State start, State goal)
     }
 
     bool termination = false;
-    NodeTree* rrt_tree_1 = new NodeTree(new Node(_start, nullptr));
-    NodeTree* rrt_tree_2 = new NodeTree(new Node(_goal, nullptr));
-    std::vector<State>* node_list_1 = new std::vector<State>();
-    std::vector<State>* node_list_2 = new std::vector<State>();
+    NodeTree* rrt_tree_1 = new NodeTree(new Node(_start, nullptr), _params.weights);
+    NodeTree* rrt_tree_2 = new NodeTree(new Node(_goal, nullptr), _params.weights);
     KDTree* kd_tree_1;
     KDTree* kd_tree_2;
     size_t count1 = 0, count2 = 0;
     // bool first_large;
     do{
         auto rand_q = SampleRandomConfig();
-        auto tree_1_nearest_node = NearestNode(rrt_tree_1, node_list_1, kd_tree_1, rand_q);
-        Connect(rrt_tree_1, node_list_1, kd_tree_1, tree_1_nearest_node, rand_q);
+        auto tree_1_nearest_node = NearestNode(rrt_tree_1, kd_tree_1, rand_q);
+        Connect(rrt_tree_1, kd_tree_1, tree_1_nearest_node, rand_q);
 
         State tree_goal = rrt_tree_1->GetLatestNode()->q;
-        auto tree_2_nearest_node = NearestNode(rrt_tree_2, node_list_2, kd_tree_2, tree_goal);
-        Extend(rrt_tree_2, node_list_2, kd_tree_2, tree_2_nearest_node, rand_q);
+        auto tree_2_nearest_node = NearestNode(rrt_tree_2, kd_tree_2, tree_goal);
+        Extend(rrt_tree_2, kd_tree_2, tree_2_nearest_node, rand_q);
 
         if (L2Norm(tree_goal, rrt_tree_2->GetLatestNode()->q) < _params.step_size) {
             termination = true;
@@ -82,7 +80,6 @@ void BiRRT::Planning(State start, State goal)
         if (rrt_tree_1->GetTreeSize() > rrt_tree_2->GetTreeSize()) {
             // std::cout << "SWAP" << std::endl;
             std::swap(rrt_tree_1, rrt_tree_2);
-            std::swap(node_list_1, node_list_2);
             std::swap(kd_tree_1, kd_tree_2);
         }
 
@@ -137,15 +134,12 @@ void BiRRT::Planning(State start, State goal)
     delete rrt_tree_2;
     rrt_tree_1 = nullptr;
     rrt_tree_2 = nullptr;
-    delete node_list_1;
-    delete node_list_2;
-    node_list_1 = nullptr;
-    node_list_2 = nullptr;
+
 
 
 }
 
-bool BiRRT::LocalPlanner(NodeTree* rrt_tree, std::vector<State>* node_list, KDTree* &kd_tree, Node* nearest_node, State rand_q)
+bool BiRRT::LocalPlanner(NodeTree* rrt_tree, KDTree* &kd_tree, Node* nearest_node, State rand_q)
 {
     auto current_q = nearest_node->q;
     auto delta_q = rand_q + current_q*(-1);
@@ -153,7 +147,7 @@ bool BiRRT::LocalPlanner(NodeTree* rrt_tree, std::vector<State>* node_list, KDTr
 
     auto new_q = current_q + unit_step*_params.step_size;
 
-    while (IsInWorkspace(new_q) && !CheckCollision(new_q) && L2Norm(NearestNode(rrt_tree, node_list, kd_tree, new_q)->q, new_q)>0.9*_params.step_size) // 
+    while (IsInWorkspace(new_q) && !CheckCollision(new_q) && L2Norm(NearestNode(rrt_tree, kd_tree, new_q)->q, new_q)>0.9*_params.step_size) // 
     {
         Node* new_node = new Node(new_q, nearest_node);
         rrt_tree->Append(new_node);
