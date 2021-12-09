@@ -1,3 +1,6 @@
+#ifndef KDTREE_
+#define KDTREE_
+
 #pragma once
 
 /*
@@ -21,7 +24,7 @@
 using point_t = std::vector< double >;
 using indexArr = std::vector< size_t >;
 using pointIndex = typename std::pair< std::vector< double >, size_t >;
-
+class NodeTree;
 class KDNode {
    public:
     using KDNodePtr = std::shared_ptr< KDNode >;
@@ -131,3 +134,5 @@ class KDTree {
         const point_t &pt,          //
         const double &rad);
 };
+
+#endif

@@ -13,7 +13,7 @@ public:
     bool PlanningInterface(std::ostream& sout, std::istream& sinput);
     
     void Planning(State start, State goal);
-    bool LocalPlanner(NodeTree* rrt_tree, KDTree* &kd_tree, Node* nearest_node, State rand_q);
+    bool LocalPlanner(NodeTree* rrt_tree, Node* nearest_node, State rand_q);
     bool CheckCollision(State q);
 
 private:
@@ -22,7 +22,8 @@ private:
         .goal_bias_probability_second = 0.30,
         .goal_bias_mag = 60.0/180.0*M_PI,
         .step_size = 15.0/180.0*M_PI,
-        .max_sample_points = 50000,
+        .stop_step_size = 30.0/180.0*M_PI,
+        .max_sample_points = 35000,
         .draw_tree_point = 0,
         .draw_tree_line = 0,
         .draw_path_point = 5,

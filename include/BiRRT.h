@@ -16,6 +16,8 @@ public:
     bool LocalPlanner(NodeTree* rrt_tree, KDTree* &kd_tree, Node* nearest_node, State rand_q);
     bool CheckCollision(State q);
     State SampleRandomConfig();
+    bool Connect(NodeTree* rrt_tree_1, NodeTree* rrt_tree_2, Node* nearest_node, State rand_q);
+    bool Extend(NodeTree* rrt_tree_1, NodeTree* rrt_tree_2, Node* nearest_node, State rand_q);
 
     void TestTime();
 
@@ -25,6 +27,7 @@ private:
         .goal_bias_probability_second = 0.30,
         .goal_bias_mag = 60.0/180.0*M_PI,
         .step_size = 15.0/180.0*M_PI,
+        .stop_step_size = 15.0/180.0*M_PI,
         .max_sample_points = 40000,
         .draw_tree_point = 0,
         .draw_tree_line = 0,

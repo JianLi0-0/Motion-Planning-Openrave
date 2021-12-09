@@ -4,6 +4,7 @@
 #include <vector>
 #include <algorithm>
 #include "Node.h"
+#include "KDTree.h"
 
 std::ostream& operator<<(std::ostream& out, Node & T);
 std::ostream& operator<<(std::ostream& out, State & q);
@@ -12,11 +13,14 @@ State operator*(const State& v1, const double& k);
 State operator*(State const& v1, State const& v2);
 template <typename T> void MyPrint (T const& q);
 
+class KDTree;
+
 class NodeTree
 {
     private:
         std::vector<Node*> _nodes;
-        State _weights;      
+        State _weights;
+        KDTree* _kd_tree;
     public:
         NodeTree(){};
         NodeTree(Node* root, State weights): _nodes({root}), _weights(weights) {};
@@ -28,6 +32,8 @@ class NodeTree
         size_t GetTreeSize() { return _nodes.size();}
         size_t size() { return _nodes.size();}
         State at(size_t i) { return _nodes[i]->q*_weights; }
+        void set_kd_tree(KDTree* kd_tree) { _kd_tree = kd_tree; }
+        KDTree* get_kd_tree() { return _kd_tree; }
         std::vector<Node*> GetPath(Node* end_point)
         {
             std::vector<Node*> path;
